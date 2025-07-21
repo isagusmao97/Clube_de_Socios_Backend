@@ -101,12 +101,15 @@ async function deleteSocio(id) {
   openSection("socio");
 }
 
-await knex("ocupacao").insert([
+// o código abaixo está causando erro no momento em que se roda o comando para criar as migrations
+// e ele está separado no arquivo seed 
+
+/*await knex("ocupacao").insert([
   { titulo: "Professor", descricao: "Docente em instituições de ensino", categoria: "Educação" },
   { titulo: "Enfermeiro", descricao: "Profissional da saúde", categoria: "Saúde" },
   { titulo: "Engenheiro Civil", descricao: "Planeja e executa obras de construção", categoria: "Engenharia" },
   { titulo: "Auxiliar Administrativo", descricao: "Apoio em rotinas administrativas", categoria: "Administração" }
-]);
+]); */
 
 
 async function loadDependentes(container) {
