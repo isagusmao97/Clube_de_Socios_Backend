@@ -79,6 +79,35 @@ router.post("/", async (req, res) => {
   }
 });
 
+// Atualizar dados de um dependente
+router.put("/:id", async (req, res) => {
+  try {
+    const { nome, data_nascimento, sexo, grau_parentesco, socio_id } = req.body;
+
+    // Verifica se o dependente existe
+    const existe = await knex("dependente").where({ id: req.params.id }).first();
+    if (!existe) {
+      return res.status(404).json({ erro: "Dependente não encontrado." });
+    }
+
+    // Atualiza os dados
+    await knex("dependente")
+      .where({ id: req.params.id })
+      .update({
+        nome,
+        data_nascimento,
+        sexo,
+        grau_parentesco,
+        socio_id
+      });
+
+    res.json({ mensagem: "Dependente atualizado com sucesso." });
+  } catch (err) {
+    console.error("Erro ao atualizar dependente:", err);
+    res.status(500).json({ erro: "Erro interno ao atualizar dependente." });
+  }
+});
+
 
 
 router.delete("/:id", async (req, res) => {
