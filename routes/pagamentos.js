@@ -4,6 +4,31 @@ const knex = require("knex")(require("../knexfile").development);
 const router = express.Router();
 
 
+function calcularValorParaPagamento(socio, dependentes, anoReferencia) {
+  const valorMensal = 25;
+  let totalMeses = 0;
+
+  // Sócio titular
+  if (anoReferencia === socio.ano_ingresso) {
+    totalMeses += 12 - socio.mes_ingresso + 1;
+  } else if (anoReferencia > socio.ano_ingresso) {
+    totalMeses += 12;
+  }
+
+  // Dependentes
+  for (const d of dependentes) {
+    if (anoReferencia === d.ano_ingresso) {
+      totalMeses += 12 - d.mes_ingresso + 1;
+    } else if (anoReferencia > d.ano_ingresso) {
+      totalMeses += 12;
+    }
+  }
+
+  return totalMeses * valorMensal;
+}
+
+
+
 router.get("/", async (req, res) => {
   try {
     const { nome, ano } = req.query;
@@ -59,6 +84,37 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({ erro: "Erro interno ao buscar pagamento." });
   }
 });
+
+router.post("/", async (req, res) => {
+  try {
+    const { socio_id, ano, data_pagamento } = req.body;
+
+    const socio = await knex("socio").where({ id: socio_id }).first();
+    if (!socio) {
+      return res.status(400).json({ erro: "Sócio não encontrado." });
+    }
+
+    const dependentes = await knex("dependente").where({ socio_id });
+    const valorTotal = calcularValorParaPagamento(socio, dependentes, ano);
+
+    if (valorTotal == null || isNaN(valorTotal)) {
+      return res.status(400).json({ erro: "Não foi possível calcular o valor do pagamento." });
+    }
+
+    await knex("pagamento").insert({
+      socio_id,
+      ano,
+      valor_total: valorTotal,
+      data_pagamento
+    });
+
+    res.status(201).json({ mensagem: "Pagamento registrado com sucesso.", valor_total: valorTotal });
+  } catch (err) {
+    console.error("Erro ao criar pagamento:", err.message);
+    res.status(500).json({ erro: "Erro interno ao registrar pagamento." });
+  }
+});
+
 
 
 

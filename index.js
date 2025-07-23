@@ -115,70 +115,89 @@ app.post('/dependentes', async (req, res) => {
   }
 });
 
-app.post('/pagamentos', async (req, res) => {
-  const { socio_id, ano } = req.body;
+function calcularValorParaPagamento(socio, dependentes, anoReferencia) {
+  const valorMensal = 25;
+  let totalMeses = 0;
 
+  // Cálculo para o sócio
+  if (anoReferencia === socio.ano_ingresso) {
+    totalMeses += 12 - socio.mes_ingresso + 1;
+  } else if (anoReferencia > socio.ano_ingresso) {
+    totalMeses += 12;
+  }
+
+  // Cálculo para dependentes
+  for (const d of dependentes) {
+    if (anoReferencia === d.ano_ingresso) {
+      totalMeses += 12 - d.mes_ingresso + 1;
+    } else if (anoReferencia > d.ano_ingresso) {
+      totalMeses += 12;
+    }
+  }
+
+  return totalMeses * valorMensal;
+}
+
+
+app.post("/pagamentos", async (req, res) => {
+  console.log("➡️ Dados recebidos:", req.body); // Verifique socio_id e ano
   try {
-    const socio = await knex('socio').where({ id: socio_id }).first();
-    if (!socio) return res.status(400).json({ erro: 'Sócio não encontrado.' });
+    const { socio_id, ano } = req.body;
 
-    const dependentes = await knex('dependente').where({ socio_id });
+    const socio = await knex("socio").where({ id: socio_id }).first();
+    console.log("👤 Sócio encontrado:", socio);
 
-    const valorPorPessoa = 25;
-    let valorTotal = 0;
+    const dependentes = await knex("dependente").where({ socio_id });
+    console.log("👥 Dependentes encontrados:", dependentes);
 
-    // Sócio
-    if (ano == socio.ano_ingresso) {
-      valorTotal += valorPorPessoa * (12 - socio.mes_ingresso + 1);
-    } else if (ano > socio.ano_ingresso) {
-      valorTotal += valorPorPessoa * 12;
+    if (!socio) {
+      return res.status(400).json({ erro: "Sócio não encontrado." });
     }
 
-    // Dependentes
-    for (const d of dependentes) {
-      if (ano == d.ano_ingresso) {
-        valorTotal += valorPorPessoa * (12 - d.mes_ingresso + 1);
-      } else if (ano > d.ano_ingresso) {
-        valorTotal += valorPorPessoa * 12;
-      }
-    }
+    const valorTotal = calcularValorParaPagamento(socio, dependentes, ano);
+    console.log("💸 Valor calculado:", valorTotal);
 
-    await knex("pagamento_cota").insert({
+    await knex("pagamento").insert({
       socio_id,
       ano,
       valor_total: valorTotal,
       data_pagamento: new Date()
     });
 
-    res.status(201).json({ mensagem: 'Pagamento registrado com sucesso.', valor_total: valorTotal });
+    res.status(201).json({
+      mensagem: "Pagamento registrado com sucesso.",
+      valor_total: valorTotal
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ erro: 'Erro ao registrar pagamento.' });
+    console.error("❌ Erro ao registrar pagamento:", err);
+    res.status(500).json({ erro: "Erro interno ao registrar pagamento." });
   }
 });
+
+
 
 
 app.get("/pagamentos", async (req, res) => {
   try {
     const { nome, ano } = req.query;
 
-    let query = knex("pagamento_cota")
-      .join("socio", "pagamento_cota.socio_id", "socio.id")
+    let query = knex("pagamento")
+      .join("socio", "pagamento.socio_id", "socio.id")
       .select(
-        "pagamento_cota.id",
+        "pagamento.id",
         "socio.nome as nome_socio",
-        "pagamento_cota.ano",
-        "pagamento_cota.valor_total",
-        "pagamento_cota.data_pagamento"
+        "pagamento.ano",
+        "pagamento.valor_total",
+        "pagamento.data_pagamento"
       )
-      .orderBy("pagamento_cota.data_pagamento", "desc");
+      .orderBy("pagamento.data_pagamento", "desc");
 
     if (nome) {
       query.whereRaw("LOWER(socio.nome) LIKE ?", [`%${nome.toLowerCase()}%`]);
     }
 
     if (ano) {
-      query.where("pagamento_cota.ano", ano);
+      query.where("pagamento.ano", ano);
     }
 
     const resultados = await query;
@@ -189,11 +208,12 @@ app.get("/pagamentos", async (req, res) => {
   }
 });
 
+
 app.delete("/pagamentos/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    const deletado = await knex("pagamento_cota").where({ id }).del();
+    const deletado = await knex("pagamento").where({ id }).del();
 
     if (!deletado) {
       return res.status(404).json({ erro: "Pagamento não encontrado." });
