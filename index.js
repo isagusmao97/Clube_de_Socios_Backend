@@ -140,22 +140,22 @@ function calcularValorParaPagamento(socio, dependentes, anoReferencia) {
 
 
 app.post("/pagamentos", async (req, res) => {
-  console.log("➡️ Dados recebidos:", req.body); // Verifique socio_id e ano
+  console.log("Dados recebidos:", req.body); // Verifique socio_id e ano
   try {
     const { socio_id, ano } = req.body;
 
     const socio = await knex("socio").where({ id: socio_id }).first();
-    console.log("👤 Sócio encontrado:", socio);
+    console.log("Sócio encontrado:", socio);
 
     const dependentes = await knex("dependente").where({ socio_id });
-    console.log("👥 Dependentes encontrados:", dependentes);
+    console.log("Dependentes encontrados:", dependentes);
 
     if (!socio) {
       return res.status(400).json({ erro: "Sócio não encontrado." });
     }
 
     const valorTotal = calcularValorParaPagamento(socio, dependentes, ano);
-    console.log("💸 Valor calculado:", valorTotal);
+    console.log("Valor calculado:", valorTotal);
 
     await knex("pagamento").insert({
       socio_id,
@@ -169,7 +169,7 @@ app.post("/pagamentos", async (req, res) => {
       valor_total: valorTotal
     });
   } catch (err) {
-    console.error("❌ Erro ao registrar pagamento:", err);
+    console.error("Erro ao registrar pagamento:", err);
     res.status(500).json({ erro: "Erro interno ao registrar pagamento." });
   }
 });
